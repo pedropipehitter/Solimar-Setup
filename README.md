@@ -82,3 +82,16 @@ At line:40 char:1
     + CategoryInfo          : InvalidArgument: (MSFT_NetIPAddress:ROOT/StandardCimv2/MSFT_NetIPAddress) [New-NetIPAddr
    ess], CimException
     + FullyQualifiedErrorId : Windows System Error 87,New-NetIPAddress
+
+--------4th try 
+PS C:\WINDOWS\system32> Set-ExecutionPolicy Bypass -Scope Process -Force
+>> irm https://github.com/pedropipehitter/Solimar-Setup/raw/main/setup.ps1 | iex
+
+==> Configuring static local IP...
+iex : Cannot bind argument to parameter 'IPAddress' because it is an empty string.
+At line:2 char:75
++ ... s://github.com/pedropipehitter/Solimar-Setup/raw/main/setup.ps1 | iex
++                                                                       ~~~
+    + CategoryInfo          : InvalidData: (:) [Invoke-Expression], ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorEmptyStringNotAllowed,Microsoft.PowerShell.Commands.Invo
+   keExpressionCommand
