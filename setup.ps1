@@ -19,20 +19,33 @@ function Warn  { param([string]$m) Write-Host "    !!  $m" -ForegroundColor Yell
 # ── 1. Static local IP ────────────────────────────────────────────────────────
 Step "Configuring static local IP..."
 
-$adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" -and $_.PhysicalMediaType -ne "Wireless LAN" } | Select-Object -First 1
+# Exclude virtual/Tailscale adapters
+$adapter = Get-NetAdapter | Where-Object {
+    $_.Status -eq "Up" -and
+    $_.PhysicalMediaType -ne "Wireless LAN" -and
+    $_.InterfaceDescription -notmatch "Tailscale|WireGuard|Virtual|Hyper-V|Loopback"
+} | Select-Object -First 1
 if (-not $adapter) {
-    $adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -First 1
+    $adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } |
+               Sort-Object -Property { $_.InterfaceDescription -match "Tailscale" } |
+               Select-Object -First 1
 }
 
-$currentIP  = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 |
-              Where-Object { $_.PrefixOrigin -ne "WellKnown" } |
-              Select-Object -First 1
-$currentGW  = (Get-NetRoute -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 |
-               Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" }).NextHop
+$currentIP = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 |
+             Where-Object { $_.PrefixOrigin -ne "WellKnown" } |
+             Select-Object -First 1
+
+# Search all interfaces for a default route (Tailscale may hold it on some machines)
+$currentGW = (Get-NetRoute -AddressFamily IPv4 |
+              Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" -and $_.NextHop -ne "0.0.0.0" } |
+              Sort-Object RouteMetric | Select-Object -First 1).NextHop
 
 if (-not $StaticIP) { $StaticIP = $currentIP.IPAddress }
 if (-not $Gateway)  { $Gateway  = $currentGW }
 $prefix = $currentIP.PrefixLength
+
+if (-not $StaticIP) { throw "Could not detect current IP. Pass -StaticIP explicitly." }
+if (-not $Gateway)  { throw "Could not detect gateway. Pass -Gateway explicitly." }
 
 Remove-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -Confirm:$false -ErrorAction SilentlyContinue
 Remove-NetRoute     -InterfaceIndex $adapter.InterfaceIndex -DestinationPrefix "0.0.0.0/0" -Confirm:$false -ErrorAction SilentlyContinue
