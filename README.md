@@ -72,3 +72,13 @@ At line:2 char:1
     + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [Invoke-RestMethod], WebExc
    eption
     + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.InvokeRestMethodCommand
+
+
+  ------ 3rd try
+  New-NetIPAddress : Invalid parameter DefaultGateway
+At line:40 char:1
++ New-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -IPAddress $ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (MSFT_NetIPAddress:ROOT/StandardCimv2/MSFT_NetIPAddress) [New-NetIPAddr
+   ess], CimException
+    + FullyQualifiedErrorId : Windows System Error 87,New-NetIPAddress
