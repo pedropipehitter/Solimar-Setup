@@ -62,3 +62,13 @@ Services to move from Hostinger VPS to Solimar (via Tailscale, no public ports n
 
 - [ ] n8n (currently at `docker-compose.yml` in Hostinger-Docker-VPS)
 - [ ] Traefik (may be replaced by Tailscale + Caddy for local routing)
+
+
+------------
+here's the error from the first run: irm : 404: Not Found
+At line:2 char:1
++ irm https://raw.githubusercontent.com/pedropipehitter/solimar-setup/m ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [Invoke-RestMethod], WebExc
+   eption
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.InvokeRestMethodCommand
