@@ -2,61 +2,14 @@
 # Solimar Home Server Setup
 # Run in PowerShell as Administrator
 
-param(
-    [string]$StaticIP    = "",
-    [string]$Gateway     = "",
-    [string]$DNS         = "8.8.8.8,8.8.4.4"
-)
-
 $ErrorActionPreference = "Stop"
 $TailscaleIP = "100.89.104.20"
 $AuthorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINa3YMZrlVaFDAbbscQgH+Bc7ADwoXeFfxM7g7t8p4r5 franciscohermosilloiii@MacBookPro.lan"
 
 function Step  { param([string]$m) Write-Host "`n==> $m" -ForegroundColor Cyan }
 function Ok    { param([string]$m) Write-Host "    OK  $m" -ForegroundColor Green }
-function Warn  { param([string]$m) Write-Host "    !!  $m" -ForegroundColor Yellow }
 
-# ── 1. Static local IP ────────────────────────────────────────────────────────
-Step "Configuring static local IP..."
-
-# Exclude virtual/Tailscale adapters
-$adapter = Get-NetAdapter | Where-Object {
-    $_.Status -eq "Up" -and
-    $_.PhysicalMediaType -ne "Wireless LAN" -and
-    $_.InterfaceDescription -notmatch "Tailscale|WireGuard|Virtual|Hyper-V|Loopback"
-} | Select-Object -First 1
-if (-not $adapter) {
-    $adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } |
-               Sort-Object -Property { $_.InterfaceDescription -match "Tailscale" } |
-               Select-Object -First 1
-}
-
-$currentIP = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 |
-             Where-Object { $_.PrefixOrigin -ne "WellKnown" } |
-             Select-Object -First 1
-
-# Search all interfaces for a default route (Tailscale may hold it on some machines)
-$currentGW = (Get-NetRoute -AddressFamily IPv4 |
-              Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" -and $_.NextHop -ne "0.0.0.0" } |
-              Sort-Object RouteMetric | Select-Object -First 1).NextHop
-
-if (-not $StaticIP) { $StaticIP = $currentIP.IPAddress }
-if (-not $Gateway)  { $Gateway  = $currentGW }
-$prefix = $currentIP.PrefixLength
-
-if (-not $StaticIP) { throw "Could not detect current IP. Pass -StaticIP explicitly." }
-if (-not $Gateway)  { throw "Could not detect gateway. Pass -Gateway explicitly." }
-
-Remove-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -Confirm:$false -ErrorAction SilentlyContinue
-Remove-NetRoute     -InterfaceIndex $adapter.InterfaceIndex -DestinationPrefix "0.0.0.0/0" -Confirm:$false -ErrorAction SilentlyContinue
-
-New-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -IPAddress $StaticIP -PrefixLength $prefix -DefaultGateway $Gateway | Out-Null
-Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses ($DNS -split ",")
-
-Ok "Static IP: $StaticIP / $prefix  gateway: $Gateway  adapter: $($adapter.Name)"
-Warn "Also reserve $StaticIP in your router's DHCP table to avoid conflicts."
-
-# ── 2. OpenSSH Server ─────────────────────────────────────────────────────────
+# ── 1. OpenSSH Server ─────────────────────────────────────────────────────────
 Step "Installing OpenSSH Server..."
 
 $cap = Get-WindowsCapability -Online | Where-Object Name -like "OpenSSH.Server*"
@@ -71,7 +24,7 @@ Set-Service -Name sshd -StartupType Automatic
 Start-Service sshd -ErrorAction SilentlyContinue
 Ok "sshd auto-start enabled and running"
 
-# ── 3. Firewall ───────────────────────────────────────────────────────────────
+# ── 2. Firewall ───────────────────────────────────────────────────────────────
 Step "Opening firewall port 22..."
 
 if (-not (Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -ErrorAction SilentlyContinue)) {
@@ -81,7 +34,7 @@ if (-not (Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -ErrorAction Silentl
 }
 Ok "Firewall rule active"
 
-# ── 4. Authorized key ─────────────────────────────────────────────────────────
+# ── 3. Authorized key ─────────────────────────────────────────────────────────
 Step "Installing SSH authorized key..."
 
 $sshDir = "C:\ProgramData\ssh"
@@ -94,20 +47,18 @@ Set-Content -Path $keysFile -Value $AuthorizedKey -Encoding UTF8
 icacls $keysFile /inheritance:r /grant "SYSTEM:(F)" /grant "Administrators:(F)" | Out-Null
 Ok "Key written to $keysFile with correct permissions"
 
-# ── 5. SSH config: key-only auth ──────────────────────────────────────────────
+# ── 4. SSH config: key-only auth ──────────────────────────────────────────────
 Step "Hardening sshd_config..."
 
 $configPath = "$sshDir\sshd_config"
 $config = Get-Content $configPath -Raw
 
-# Ensure PubkeyAuthentication yes
 if ($config -match "#?PubkeyAuthentication") {
     $config = $config -replace "#?PubkeyAuthentication\s+\w+", "PubkeyAuthentication yes"
 } else {
     $config += "`nPubkeyAuthentication yes"
 }
 
-# Disable password auth
 if ($config -match "#?PasswordAuthentication") {
     $config = $config -replace "#?PasswordAuthentication\s+\w+", "PasswordAuthentication no"
 } else {
@@ -118,7 +69,7 @@ Set-Content -Path $configPath -Value $config -Encoding UTF8
 Restart-Service sshd
 Ok "Key-only auth enforced, sshd restarted"
 
-# ── 6. Node.js ────────────────────────────────────────────────────────────────
+# ── 5. Node.js ────────────────────────────────────────────────────────────────
 Step "Installing Node.js..."
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -130,7 +81,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     Ok "Node.js already installed: $(node --version)"
 }
 
-# ── 7. Claude Code ────────────────────────────────────────────────────────────
+# ── 6. Claude Code ────────────────────────────────────────────────────────────
 Step "Installing Claude Code..."
 
 npm install -g @anthropic-ai/claude-code
@@ -142,13 +93,12 @@ Write-Host "`n$bar" -ForegroundColor Yellow
 Write-Host "  Solimar setup complete!" -ForegroundColor Yellow
 Write-Host $bar -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  Local IP   $StaticIP (static, /$prefix)"
 Write-Host "  Tailscale  $TailscaleIP"
 Write-Host "  SSH auth   key-only (password disabled)"
 Write-Host ""
 Write-Host "  Connect from MBP:" -ForegroundColor Cyan
 Write-Host "    ssh $env:USERNAME@$TailscaleIP" -ForegroundColor White
-Write-Host "    ssh $env:USERNAME@$StaticIP     (local network only)" -ForegroundColor White
 Write-Host ""
-Write-Host "  Next: reserve $StaticIP in your router DHCP settings." -ForegroundColor Yellow
+Write-Host "  Next: set your API key:" -ForegroundColor Yellow
+Write-Host '    [System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY","sk-ant-...","Machine")' -ForegroundColor White
 Write-Host $bar -ForegroundColor Yellow
