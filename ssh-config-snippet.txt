@@ -3,6 +3,7 @@
 
 Host solimar
     HostName 100.89.104.20
-    User <YOUR_WINDOWS_USERNAME>
+    Port 24601
+    User <Solimar>
     IdentityFile ~/.ssh/id_ed25519
     ServerAliveInterval 60

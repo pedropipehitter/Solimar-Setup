@@ -25,14 +25,16 @@ Start-Service sshd -ErrorAction SilentlyContinue
 Ok "sshd auto-start enabled and running"
 
 # ── 2. Firewall ───────────────────────────────────────────────────────────────
-Step "Opening firewall port 22..."
+Step "Opening firewall port 24601..."
 
 if (-not (Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -ErrorAction SilentlyContinue)) {
     New-NetFirewallRule -Name "OpenSSH-Server-In-TCP" `
         -DisplayName "OpenSSH Server (sshd)" `
-        -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 | Out-Null
+        -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 24601 | Out-Null
+} else {
+    Set-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -LocalPort 24601
 }
-Ok "Firewall rule active"
+Ok "Firewall rule active on port 24601"
 
 # ── 3. Authorized key ─────────────────────────────────────────────────────────
 Step "Installing SSH authorized key..."
@@ -52,6 +54,12 @@ Step "Hardening sshd_config..."
 
 $configPath = "$sshDir\sshd_config"
 $config = Get-Content $configPath -Raw
+
+if ($config -match "#?Port\s+\d+") {
+    $config = $config -replace "#?Port\s+\d+", "Port 24601"
+} else {
+    $config = "Port 24601`n" + $config
+}
 
 if ($config -match "#?PubkeyAuthentication") {
     $config = $config -replace "#?PubkeyAuthentication\s+\w+", "PubkeyAuthentication yes"
