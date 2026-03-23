@@ -1,0 +1,8 @@
+# Add this block to ~/.ssh/config on your MBP
+# Then connect with: ssh solimar
+
+Host solimar
+    HostName 100.89.104.20
+    User <YOUR_WINDOWS_USERNAME>
+    IdentityFile ~/.ssh/id_ed25519
+    ServerAliveInterval 60
