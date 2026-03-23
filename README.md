@@ -16,13 +16,11 @@ Scripts to turn Solimar (Windows 11 mini PC) into a home server accessible via S
 
 ## Running the script on Solimar
 
-**Option A — one-liner (no git needed):**
-
-Push this repo to GitHub first (public or with a PAT), then in PowerShell as Administrator:
+**Run this in PowerShell as Administrator:**
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-irm https://github.com/pedropipehitter/Solimar-Setup/raw/main/setup.ps1 | iex
+$s = (Invoke-WebRequest -Uri "https://github.com/pedropipehitter/Solimar-Setup/raw/main/setup.ps1" -UseBasicParsing).Content; Invoke-Expression $s
 ```
 
 **Option B — clone and run:**
