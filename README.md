@@ -22,7 +22,7 @@ Push this repo to GitHub first (public or with a PAT), then in PowerShell as Adm
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-irm https://raw.githubusercontent.com/pedropipehitter/Solimar-Setup/main/setup.ps1 | iex
+irm https://github.com/pedropipehitter/Solimar-Setup/raw/main/setup.ps1 | iex
 ```
 
 **Option B — clone and run:**
